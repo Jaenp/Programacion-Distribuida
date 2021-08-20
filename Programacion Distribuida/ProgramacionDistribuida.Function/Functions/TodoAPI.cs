@@ -10,6 +10,8 @@ using Newtonsoft.Json;
 using Microsoft.WindowsAzure.Storage.Table;
 using ProgramacionDistribuida.Common.Models;
 using ProgramacionDistribuida.Common.Responses;
+using System.Security.Principal;
+using ProgramacionDistribuida.Function.Entities;
 
 namespace ProgramacionDistribuida.Function.Functions
 {
@@ -36,12 +38,28 @@ namespace ProgramacionDistribuida.Function.Functions
                     Message = "The request must have a TaskDescription."
                 });
             }
+            PDEntities todoEntity = new PDEntities
+            {
+                CreatedTime = DateTime.UtcNow,
+                ETag = "*",
+                IsCompleted = false,
+                PartitionKey = "TODO",
+                RowKey = Guid.NewGuid().ToString(),
+                TaskDescription = todo.TaskDescription
+            };
 
-            string responseMessage = string.IsNullOrEmpty(name)
-                ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                : $"Hello, {name}. This HTTP triggered function executed successfully.";
+            TableOperation addOpertation = TableOperation.Insert(todoEntity);
+            await TodoTable.ExecuteAsync(addOpertation);
 
-            return new OkObjectResult(responseMessage);
+            string message = "New todo stored in table";
+            log.LogInformation(message);
+
+            return new OkObjectResult(new Responses
+            {
+                IsSuccess = true,
+                Message = message,
+                Result = todoEntity
+            });
         }
     }
 }
